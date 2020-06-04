@@ -1,0 +1,79 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Data.OleDb;
+
+namespace B33B34
+{
+    public partial class SpisakPartija : Form
+    {
+        public SpisakPartija()
+        {
+            InitializeComponent();
+        }
+
+        private void SpisakPartija_Load(object sender, EventArgs e)
+        {
+            label3.Visible = false;
+            OleDbConnection con = new OleDbConnection(@"Provider=Microsoft.ACE.OLEDB.12.0; Data Source=B33B34.accdb");
+
+            string poc = "Select Distinct Format(VremePocetka, 'Short Time') From Partija";
+            OleDbCommand cmd1 = new OleDbCommand(poc, con);
+            con.Open();
+            OleDbDataReader dr1 = cmd1.ExecuteReader();
+
+            while (dr1.Read())
+                comboBox1.Items.Add(dr1.GetValue(0).ToString());
+
+
+            string kraj = "Select Distinct Format(VremeZavrsetka, 'Short Time') From Partija";
+            OleDbCommand cmd2 = new OleDbCommand(kraj, con);
+            OleDbDataReader dr2 = cmd2.ExecuteReader();
+            while (dr2.Read())
+                comboBox2.Items.Add(dr2.GetValue(0).ToString());
+
+            con.Close();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            DateTime prvi = Convert.ToDateTime(comboBox1.SelectedItem);
+            DateTime drugi = Convert.ToDateTime(comboBox2.SelectedItem);
+            string select = "Select Partija.PartijaID, Teren.Teren, Format(Partija.Datum, 'Short Date') AS Datum, DateDiff('n', [VremePocetka], [VremeZavrsetka]) AS [Trajanje / min] From Partija, Teren Where VremePocetka>=#" + prvi.ToLongTimeString() + "# And VremeZavrsetka<=#" + drugi.ToLongTimeString() + "# And Partija.TerenID=Teren.TerenID";
+            OleDbConnection con = new OleDbConnection(@"Provider=Microsoft.ACE.OLEDB.12.0; Data Source=B33B34.accdb");
+            OleDbCommand cmd = new OleDbCommand(select, con);
+            OleDbDataAdapter da = new OleDbDataAdapter();
+            da.SelectCommand = cmd;
+            DataTable dt = new DataTable();
+            da.Fill(dt);
+            dataGridView1.DataSource = dt;
+        }
+
+        private void dataGridView1_SelectionChanged(object sender, EventArgs e)
+        {
+            if (dataGridView1.SelectedRows.Count == 1)
+            {
+                OleDbConnection con = new OleDbConnection(@"Provider=Microsoft.ACE.OLEDB.12.0; Data Source=B33B34.accdb");
+                DataGridViewRow red = dataGridView1.SelectedRows[0];
+                int id_partije = Convert.ToInt32(red.Cells[0].Value);
+                string select = "Select Teren.Teren, Teren.Adresa, Grad.Grad, Teren.KontaktTelefon From Partija, Teren, Grad Where Partija.PartijaID=@Partija.PartijaID AND Grad.GradID=Teren.GradID AND Partija.TerenID=Teren.TerenID";
+                OleDbCommand cmd = new OleDbCommand(select, con);
+                cmd.Parameters.AddWithValue("Partija.PartijaID", id_partije);
+                con.Open();
+                OleDbDataReader dr = cmd.ExecuteReader();
+                label3.Visible = true;
+                while (dr.Read())
+                {
+                    label3.Text = dr.GetString(0) + " | " + dr.GetString(1) + " | " + dr.GetString(2) + " | " + dr.GetString(3);
+                }
+                con.Close();
+            }
+        }
+    }
+}
